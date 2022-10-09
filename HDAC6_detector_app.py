@@ -72,7 +72,7 @@ with open("manual.pdf", "rb") as file:
     btn=st.download_button(
     label="Click to download brief manual",
     data=file,
-    file_name="manual of HDAC1  Predictor.pdf",
+    file_name="manual of HDAC6 DETECTOR.pdf",
     mime="application/octet-stream"
 )
 ######################
