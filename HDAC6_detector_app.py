@@ -21,10 +21,12 @@ from sklearn import metrics
 from sklearn.metrics import pairwise_distances
 import joblib
 from IPython.display import HTML
-from stmol import showmol
+from stmol import* 
 import py3Dmol
 from molvs import standardize_smiles
 from math import pi
+import ipyspeck
+import ipywidgets 
 
 
 
@@ -216,7 +218,7 @@ if models_option == 'GBM_Morgan fingerprints':
 
 
             st.header('**Prediction results:**')
-            st.write('**HDAC1**: ', prediction_GBM[0])
+            st.write('**HDAC6**: ', prediction_GBM[0])
             st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
             # Generate maps of fragment contribution
@@ -224,7 +226,7 @@ if models_option == 'GBM_Morgan fingerprints':
             fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
             st.write('**Predicted fragments contribution:**')
             st.pyplot(fig)
-            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC1 inhibitors). The gray isolines separate positive and negative contributions.')
+            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
            
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
@@ -335,24 +337,32 @@ if models_option == 'GBM_Morgan fingerprints':
             #Print and download common results
 
             st.header('**2. RESULTS OF PREDICTION:**')
+            number=[]
+            for i in range(len(moldf)):
+                number.append(str(i+1))
+                
+            for i in range(len(moldf)):
+                a= moldf[0]
+                b=list(a)
+                
+            smiles=[]
+            for i in range(len(b)):
+                m = Chem.MolToSmiles(b[i])
+                smiles.append(m)
+
+
+            pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC6 activity': prediction_GBM,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
+            predictions = pred_beta.set_index('No.')
+            count_active=len(predictions[predictions['HDAC6 activity']=='Active'])
+            count_active_AD=len(predictions[(predictions['HDAC6 activity']=='Active') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            count_inactive=len(predictions[predictions['HDAC6 activity']=='Inactive'])
+            count_inactive_AD=len(predictions[(predictions['HDAC6 activity']=='Inactive') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            st.write('Total active molecules: ', count_active)
+            st.write('Total active molecules included in AD: ', count_active_AD)
+            st.write('Total inactive molecules : ', count_inactive)
+            st.write('Total inactive molecules included in AD: ', count_inactive_AD)
             if st.button('Show results as table'):                       
-                number=[]
-                for i in range(len(moldf)):
-                    number.append(str(i+1))
-                
-                for i in range(len(moldf)):
-                    a= moldf[0]
-                    b=list(a)
-                
-                smiles=[]
-                for i in range(len(b)):
-                    m = Chem.MolToSmiles(b[i])
-                    smiles.append(m)
-
-
-                pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC1 activity': prediction_GBM,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
-                predictions = pred_beta.set_index('No.')
-                st.dataframe(predictions)           
+                st.dataframe(predictions)     
                 def convert_df(df):
                     return df.to_csv().encode('utf-8')  
                 csv = convert_df(predictions)
@@ -415,7 +425,7 @@ if models_option == 'GBM_Morgan fingerprints':
                     render_mol(blk)
                     st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
-                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC1 activity': prediction_GBM[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
+                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_GBM[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
                     
                     # CSS to inject contained in a string
                     hide_table_row_index = """
@@ -434,7 +444,7 @@ if models_option == 'GBM_Morgan fingerprints':
                     st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
                     fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
                     st.pyplot(fig)
-                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC1 inhibitors). The gray isolines separate positive and negative contributions.')
+                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
                     st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 if models_option == 'MLP_Topological fingerprints':
@@ -486,7 +496,7 @@ if models_option == 'MLP_Topological fingerprints':
 
 
             st.header('**Prediction results:**')
-            st.write('**HDAC1**: ', prediction_MLP[0])
+            st.write('**HDAC6**: ', prediction_MLP[0])
             st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
             # Generate maps of fragment contribution
@@ -497,7 +507,7 @@ if models_option == 'MLP_Topological fingerprints':
             fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
             st.write('**Predicted fragments contribution:**')
             st.pyplot(fig)
-            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC1 inhibitors). The gray isolines separate positive and negative contributions.')
+            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
             
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
@@ -602,23 +612,30 @@ if models_option == 'MLP_Topological fingerprints':
             #Print and download common results
 
             st.header('**2. RESULTS OF PREDICTION:**')
+            number=[]
+            for i in range(len(moldf)):
+                number.append(str(i+1))
+                
+            for i in range(len(moldf)):
+                a= moldf[0]
+                b=list(a)
+                
+            smiles=[]
+            for i in range(len(b)):
+                m = Chem.MolToSmiles(b[i])
+                smiles.append(m)
+            pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC6 activity': prediction_MLP,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
+            predictions = pred_beta.set_index('No.')
+            count_active=len(predictions[predictions['HDAC6 activity']=='Active'])
+            count_active_AD=len(predictions[(predictions['HDAC6 activity']=='Active') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            count_inactive=len(predictions[predictions['HDAC6 activity']=='Inactive'])
+            count_inactive_AD=len(predictions[(predictions['HDAC6 activity']=='Inactive') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            st.write('Total active molecules: ', count_active)
+            st.write('Total active molecules included in AD: ', count_active_AD)
+            st.write('Total inactive molecules : ', count_inactive)
+            st.write('Total inactive molecules included in AD: ', count_inactive_AD)
+            
             if st.button('Show results as table'):                       
-                number=[]
-                for i in range(len(moldf)):
-                    number.append(str(i+1))
-                
-                for i in range(len(moldf)):
-                    a= moldf[0]
-                    b=list(a)
-                
-                smiles=[]
-                for i in range(len(b)):
-                    m = Chem.MolToSmiles(b[i])
-                    smiles.append(m)
-
-
-                pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC1 activity': prediction_MLP,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
-                predictions = pred_beta.set_index('No.')
                 st.dataframe(predictions)           
                 def convert_df(df):
                     return df.to_csv().encode('utf-8')  
@@ -681,7 +698,7 @@ if models_option == 'MLP_Topological fingerprints':
                     render_mol(blk)
                     st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
-                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC1 activity': prediction_MLP[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
+                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_MLP[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
                     
                     # CSS to inject contained in a string
                     hide_table_row_index = """
@@ -704,7 +721,7 @@ if models_option == 'MLP_Topological fingerprints':
 
                     fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
                     st.pyplot(fig)
-                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC1 inhibitors). The gray isolines separate positive and negative contributions.')
+                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
                     st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
     
 st.text('© Oleg Tinkov, 2022')      
