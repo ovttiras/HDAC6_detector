@@ -28,9 +28,6 @@ from math import pi
 import ipyspeck
 import ipywidgets 
 
-
-
-
 ######################
 # Page Title
 ######################
@@ -165,7 +162,7 @@ models_option = st.sidebar.selectbox('Select QSAR models for prediction', ('GBM_
 
     
 if models_option == 'GBM_Morgan fingerprints':
-    load_model_GBM = pickle.load(open('FP/HDAC6_GBM_ECFP4.pkl', 'rb'))
+    load_model_GBM = pickle.load(open('Morgan_fingerprint/HDAC6_GBM.pkl', 'rb'))
     st.sidebar.header('Select input molecular files')
     # functions and constants
     threshold = 0.45
