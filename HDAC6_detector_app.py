@@ -3,7 +3,7 @@
 ######################
 import matplotlib.pyplot as plt
 from matplotlib import cm
-# from rdkit.Chem.Draw import SimilarityMaps
+from rdkit.Chem.Draw import SimilarityMaps
 from numpy import loadtxt
 import numpy as np
 import pandas as pd
@@ -21,8 +21,8 @@ from sklearn import metrics
 from sklearn.metrics import pairwise_distances
 import joblib
 from IPython.display import HTML
-# from stmol import* 
-# import py3Dmol
+from stmol import* 
+import py3Dmol
 from molvs import standardize_smiles
 from math import pi
 import ipyspeck
@@ -96,13 +96,13 @@ def makeblock(smi):
                 mblock = Chem.MolToMolBlock(mol)
                 return mblock
 
-# def render_mol(xyz):
-#                 xyzview = py3Dmol.view()#(width=400,height=400)
-#                 xyzview.addModel(xyz,'mol')
-#                 xyzview.setStyle({'stick':{}})
-#                 xyzview.setBackgroundColor('black')
-#                 xyzview.zoomTo()
-#                 showmol(xyzview,height=500,width=500)
+def render_mol(xyz):
+                xyzview = py3Dmol.view()#(width=400,height=400)
+                xyzview.addModel(xyz,'mol')
+                xyzview.setStyle({'stick':{}})
+                xyzview.setBackgroundColor('black')
+                xyzview.zoomTo()
+                showmol(xyzview,height=500,width=500)
 def lipinski(smiles):
     mol=Chem.MolFromSmiles(smiles)
     desc_MolWt = Descriptors.MolWt(mol)
@@ -218,24 +218,24 @@ if models_option == 'GBM_Morgan fingerprints':
             st.write('**HDAC6**: ', prediction_GBM[0])
             st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
-            # # Generate maps of fragment contribution
+            # Generate maps of fragment contribution
             
-            # fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
-            # st.write('**Predicted fragments contribution:**')
-            # st.pyplot(fig)
-            # st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+            fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
+            st.write('**Predicted fragments contribution:**')
+            st.pyplot(fig)
+            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
            
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
  
             lipinski(compound_smiles)    
           
-            # # 3D structure
-            # st.header('**3D structure of the studied compound:**')
+            # 3D structure
+            st.header('**3D structure of the studied compound:**')
 
-            # blk=makeblock(compound_smiles)
-            # render_mol(blk)
-            # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+            blk=makeblock(compound_smiles)
+            render_mol(blk)
+            st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
    
 
@@ -416,11 +416,11 @@ if models_option == 'GBM_Morgan fingerprints':
                     st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
                     lipinski(smi)
 
-                    # # 3D structure
-                    # st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
-                    # blk=makeblock(smi)
-                    # render_mol(blk)
-                    # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+                    # 3D structure
+                    st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
+                    blk=makeblock(smi)
+                    render_mol(blk)
+                    st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
                     predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_GBM[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
                     
@@ -438,11 +438,11 @@ if models_option == 'GBM_Morgan fingerprints':
                     st.table(predictions)           
 
 
-                    # st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
-                    # fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
-                    # st.pyplot(fig)
-                    # st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                    # st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                    st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
+                    fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
+                    st.pyplot(fig)
+                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 if models_option == 'MLP_Topological fingerprints':
     load_model_MLP = pickle.load(open('Topological_FP/HDAC6_mlp_TFP.pkl', 'rb'))
@@ -497,24 +497,24 @@ if models_option == 'MLP_Topological fingerprints':
             st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
             # Generate maps of fragment contribution
-            # def fpFunction(mol, atomId=-1):
-            #     fp = SimilarityMaps.GetRDKFingerprint(mol,atomId=atomId)
-            #     return fp
+            def fpFunction(mol, atomId=-1):
+                fp = SimilarityMaps.GetRDKFingerprint(mol,atomId=atomId)
+                return fp
             
-            # fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
-            # st.write('**Predicted fragments contribution:**')
-            # st.pyplot(fig)
-            # st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+            fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
+            st.write('**Predicted fragments contribution:**')
+            st.pyplot(fig)
+            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
             
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
             lipinski(compound_smiles)
-            # # 3D structure
-            # st.header('**3D structure of the studied compound:**')
+            # 3D structure
+            st.header('**3D structure of the studied compound:**')
 
-            # blk=makeblock(compound_smiles)
-            # render_mol(blk)
-            # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+            blk=makeblock(compound_smiles)
+            render_mol(blk)
+            st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
     # Read SDF file 
     LOAD = st.sidebar.checkbox('MDL multiple SD file (*.sdf)')
     if LOAD:
@@ -689,11 +689,11 @@ if models_option == 'MLP_Topological fingerprints':
                     # Lipinski's rule
                     st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
                     lipinski(smi)
-                    # # 3D structure
-                    # st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
-                    # blk=makeblock(smi)
-                    # render_mol(blk)
-                    # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+                    # 3D structure
+                    st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
+                    blk=makeblock(smi)
+                    render_mol(blk)
+                    st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
                     predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_MLP[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
                     
@@ -711,14 +711,14 @@ if models_option == 'MLP_Topological fingerprints':
                     st.table(predictions)           
 
 
-                    # st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
-                    # def fpFunction(m, atomId=-1):
-                    #     fp = SimilarityMaps.GetRDKFingerprint(m,atomId=atomId)
-                    #     return fp
+                    st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
+                    def fpFunction(m, atomId=-1):
+                        fp = SimilarityMaps.GetRDKFingerprint(m,atomId=atomId)
+                        return fp
 
-                    # fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
-                    # st.pyplot(fig)
-                    # st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                    # st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                    fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
+                    st.pyplot(fig)
+                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
     
-st.text('© Oleg Tinkov, 2023')      
+st.text('© Oleg Tinkov, 2022')      
