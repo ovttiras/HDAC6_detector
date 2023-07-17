@@ -74,6 +74,9 @@ with open("manual.pdf", "rb") as file:
     file_name="manual of HDAC6 DETECTOR.pdf",
     mime="application/octet-stream"
 )
+# Download experimental data
+df = pd.read_csv('datasets/HDAC6_exp_data_inchi.csv')
+res = (df.groupby("inchi").apply(lambda x: x.drop(columns="inchi").to_dict("records")).to_dict())    
 ######################
 # Main functions
 ######################
@@ -178,6 +181,7 @@ if models_option == 'GBM_Morgan fingerprints':
         if len(compound_smiles)!=0:
             smiles=standardize_smiles(compound_smiles)
             m = Chem.MolFromSmiles(smiles)
+            inchi = str(Chem.MolToInchi(m))
             im = Draw.MolToImage(m)
             st.sidebar.image(im)
         
@@ -194,7 +198,7 @@ if models_option == 'GBM_Morgan fingerprints':
             # Apply model to make predictions
             prediction_GBM = load_model_GBM.predict(X)
             prediction_GBM = np.array(prediction_GBM)
-            prediction_GBM = np.where(prediction_GBM == 1, "Active", "Inactive")
+            prediction_GBM = np.where(prediction_GBM == 1, "Active", "Inactive")           
 
 
             # Estimination AD
@@ -213,17 +217,36 @@ if models_option == 'GBM_Morgan fingerprints':
             else:
                 cpd_AD_vs = "Outside AD"
 
+            # search experimental value
+            if inchi in res:
+                exp=round(res[inchi][0]['pchembl_value_mean'],2)           
+                std=round(res[inchi][0]['pchembl_value_std'],4)
+                chembl_id=str(res[inchi][0]['molecule_chembl_id'])
+                y_pred_con='see experimental value'
+                cpd_AD_vs='-'
+                
+            else:
+                y_pred_con=prediction_GBM[0]
+                cpd_AD_vs=cpd_AD_vs
+                exp="-"
+                std="-"
+                chembl_id="not detected"
+                # Generate maps of fragment contribution
+            
+                fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
+                st.write('**Predicted fragments contribution:**')
+                st.pyplot(fig)
+                st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
 
             st.header('**Prediction results:**')
-            st.write('**HDAC6**: ', prediction_GBM[0])
-            st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
-            # Generate maps of fragment contribution
+
+            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value, pIC50': y_pred_con, 'Applicability domain': cpd_AD_vs,'Experimental value, pIC50': exp,'Standard deviation': std,
+            'Chemble ID': chembl_id}, index=[1])
+            predictions_pred=common_inf.astype(str) 
+            st.dataframe(predictions_pred)
+
             
-            fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
-            st.write('**Predicted fragments contribution:**')
-            st.pyplot(fig)
-            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
            
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
@@ -282,17 +305,21 @@ if models_option == 'GBM_Morgan fingerprints':
             records = []
             for i in range(len(all_mols)):
                 record = Chem.MolToSmiles(all_mols[i])
-                records.append(record)
+                canon_smi = Chem.MolToSmiles(Chem.MolFromSmiles(record),isomericSmiles = False)
+                records.append(canon_smi)
             
             moldf_n = []
+            inchi_set=[]
             for i,record in enumerate(records):
                 standard_record = standardize_smiles(record)
                 m = Chem.MolFromSmiles(standard_record)
                 moldf_n.append(m)
+                inchi = str(Chem.MolToInchi(m))
+                inchi_set.append(inchi)
            
             st.write('Kept data: ', len(moldf_n), 'molecules')
 
-             # Calculate molecular descriptors
+            # Calculate molecular descriptors
             def calcfp(mol,funcFPInfo=dict(radius=2,nBits=1024,useFeatures=False,useChirality = False)):
                 arr = np.zeros((1,))
                 fp = GetMorganFingerprintAsBitVect(mol, **funcFPInfo)
@@ -304,56 +331,79 @@ if models_option == 'GBM_Morgan fingerprints':
             X = np.array(list(moldf['Descriptors'])).astype(int)
             
             moldf.drop(columns='Descriptors', inplace=True)
-
-                
             ######################
             # Pre-built model
             ######################
 
             # Apply model to make predictions
-            prediction_GBM = load_model_GBM.predict(X)
-            prediction_GBM = np.array(prediction_GBM)
-            prediction_GBM = np.where(prediction_GBM == 1, "Active", "Inactive")
-        
+            number=[]
+            for i in range(len(moldf)):
+                number.append(str(i+1))
+                
+               
+            exp=[]
+            std=[]
+            chembl_id=[]
+            y_pred_con=[]
+            cpd_AD_vs=[]
+            number =[]
+            count=0
+            struct=[]
+            structures=[]
 
-            # Estimination AD
+            for inc in inchi_set:
+                if inc in res:                    
+                    exp.append(str(res[inc][0]['pchembl_value_mean']))
+                    std.append(round(res[inc][0]['pchembl_value_std'],4))
+                    chembl_id.append(str(res[inc][0]['molecule_chembl_id']))
+                    y_pred_con.append('see experimental value')
+                    cpd_AD_vs.append('-')
+                    count+=1         
+                    number.append(count) 
+                else:
+                    m = Chem.MolFromInchi(inc)
+                    # Calculate molecular descriptors
+                    f_vs = [AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=1024, useFeatures=False, useChirality=False)]
+                    X = rdkit_numpy_convert(f_vs)
+                    #Predict activity
+                    prediction_GBM = load_model_GBM.predict(X)
+                    prediction_GBM = np.array(prediction_GBM)
+                    y_pred = np.where(prediction_GBM == 1, "Active", "Inactive")                                     
+                    y_pred_con.append(y_pred[0])
 
-            
-            d_ECFP4 = {}
-            for mol in Chem.SDMolSupplier("datasets/HDAC6_ws.sdf"):
-                mg = AllChem.GetMorganFingerprintAsBitVect(mol, 2, useFeatures=True)
-                for m in moldf_n:
-                    if m is not None:
-                        mg_ = AllChem.GetMorganFingerprintAsBitVect(m, 2, useFeatures=True)
-                        d_ECFP4.setdefault(Chem.MolToSmiles(m),[]).append(DataStructs.FingerprintSimilarity(mg, mg_))
 
-            df_ECFP4 = pd.DataFrame.from_dict(d_ECFP4)
-            cpd_AD_vs = np.where(df_ECFP4.max() >= threshold, "Inside AD", "Outside AD")
+                    # Estimination AD                                   
+                    d_ECFP4 = {}                
+                    for mol in Chem.SDMolSupplier("datasets/HDAC6_ws_kekule.sdf"):
+                        mg = AllChem.GetMorganFingerprintAsBitVect(mol, 2, useFeatures=True)
+                        for m in moldf_n:
+                            if m is not None:
+                                mg_ = AllChem.GetMorganFingerprintAsBitVect(m, 2, useFeatures=True)
+                                d_ECFP4.setdefault(Chem.MolToSmiles(m),[]).append(DataStructs.FingerprintSimilarity(mg, mg_))
+
+                    df_ECFP4 = pd.DataFrame.from_dict(d_ECFP4)
+                    str_a = np.where(df_ECFP4.max() >= threshold, "Inside AD", "Outside AD")                   
+                    cpd_AD_vs.append(str_a[0])
+                    exp.append('-')
+                    std.append('-')
+                    chembl_id.append('-')
+                    count+=1         
+                    number.append(count)             
 
 
             #Print and download common results
 
             st.header('**2. RESULTS OF PREDICTION:**')
-            number=[]
-            for i in range(len(moldf)):
-                number.append(str(i+1))
-                
-            for i in range(len(moldf)):
-                a= moldf[0]
-                b=list(a)
-                
-            smiles=[]
-            for i in range(len(b)):
-                m = Chem.MolToSmiles(b[i])
-                smiles.append(m)
 
 
-            pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC6 activity': prediction_GBM,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
+            pred_beta = pd.DataFrame({'SMILES': records, 'HDAC6 activity': y_pred_con,'Applicability domain (AD)': cpd_AD_vs, 'No.': number, 'Experimental value, pIC50': exp,'Standard deviation': std, 'Chemble ID': chembl_id}, index=None)
             predictions = pred_beta.set_index('No.')
+            count_exp=len(predictions[predictions['HDAC6 activity']=='see experimental value'])
             count_active=len(predictions[predictions['HDAC6 activity']=='Active'])
             count_active_AD=len(predictions[(predictions['HDAC6 activity']=='Active') & (predictions['Applicability domain (AD)']=='Inside AD')])
             count_inactive=len(predictions[predictions['HDAC6 activity']=='Inactive'])
             count_inactive_AD=len(predictions[(predictions['HDAC6 activity']=='Inactive') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            st.write('The total number of compounds which have experimental values: ', count_exp)
             st.write('Total active molecules: ', count_active)
             st.write('Total active molecules included in AD: ', count_active_AD)
             st.write('Total inactive molecules : ', count_inactive)
@@ -422,7 +472,7 @@ if models_option == 'GBM_Morgan fingerprints':
                     render_mol(blk)
                     st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
-                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_GBM[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
+                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': y_pred_con[i],'Applicability domain (AD)': cpd_AD_vs[i], 'Experimental value, pIC50': exp[i],'Standard deviation': std[i], 'Chemble ID': chembl_id[i]}, index=[0])
                     
                     # CSS to inject contained in a string
                     hide_table_row_index = """
@@ -437,17 +487,20 @@ if models_option == 'GBM_Morgan fingerprints':
                    
                     st.table(predictions)           
 
-
-                    st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
-                    fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
-                    st.pyplot(fig)
-                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                    if y_pred_con[i]!='see experimental value':
+                        st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
+                        fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
+                        st.pyplot(fig)
+                        st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+                        st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 if models_option == 'MLP_Topological fingerprints':
     load_model_MLP = pickle.load(open('Topological_FP/HDAC6_mlp_TFP.pkl', 'rb'))
     st.sidebar.header('Select input molecular files')
-    threshold = 0.4 
+    threshold = 0.4
+    def fpFunction(mol, atomId=-1):
+            fp = SimilarityMaps.GetRDKFingerprint(mol,atomId=atomId)
+            return fp
     # Read SMILES input
     SMILES = st.sidebar.checkbox('SMILES notations (*.smi)')    
     if SMILES:
@@ -456,6 +509,7 @@ if models_option == 'MLP_Topological fingerprints':
         if len(compound_smiles)!=0:
             smiles=standardize_smiles(compound_smiles)
             m = Chem.MolFromSmiles(smiles)
+            inchi = str(Chem.MolToInchi(m))
             im = Draw.MolToImage(m)
             st.sidebar.image(im)    
                 
@@ -491,20 +545,34 @@ if models_option == 'MLP_Topological fingerprints':
             else:
                 cpd_AD_vs = "Outside AD"
 
+            # search experimental value
+            if inchi in res:
+                exp=round(res[inchi][0]['pchembl_value_mean'],2)           
+                std=round(res[inchi][0]['pchembl_value_std'],4)
+                chembl_id=str(res[inchi][0]['molecule_chembl_id'])
+                y_pred_con='see experimental value'
+                cpd_AD_vs='-'
+                
+            else:
+                y_pred_con=prediction_MLP[0]
+                cpd_AD_vs=cpd_AD_vs
+                exp="-"
+                std="-"
+                chembl_id="not detected"
+                # Generate maps of fragment contribution
+            
+                fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
+                st.write('**Predicted fragments contribution:**')
+                st.pyplot(fig)
+                st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
 
             st.header('**Prediction results:**')
-            st.write('**HDAC6**: ', prediction_MLP[0])
-            st.write('**Applicability domain (AD)**: ', cpd_AD_vs)
 
-            # Generate maps of fragment contribution
-            def fpFunction(mol, atomId=-1):
-                fp = SimilarityMaps.GetRDKFingerprint(mol,atomId=atomId)
-                return fp
-            
-            fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(mol, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
-            st.write('**Predicted fragments contribution:**')
-            st.pyplot(fig)
-            st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+
+            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value, pIC50': y_pred_con, 'Applicability domain': cpd_AD_vs,'Experimental value, pIC50': exp,'Standard deviation': std,
+            'Chemble ID': chembl_id}, index=[1])
+            predictions_pred=common_inf.astype(str) 
+            st.dataframe(predictions_pred)                
             
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
@@ -540,7 +608,6 @@ if models_option == 'MLP_Topological fingerprints':
 
            
             st.write('Original data: ', len(all_mols), 'molecules')
-            # st.write('Kept data: ', len(moldf), 'molecules')
             st.write('Failed data: ', len(failed_mols), 'molecules')
             if len(failed_mols)!=0:
                 number =[]
@@ -557,15 +624,20 @@ if models_option == 'MLP_Topological fingerprints':
             records = []
             for i in range(len(all_mols)):
                 record = Chem.MolToSmiles(all_mols[i])
-                records.append(record)
+                canon_smi = Chem.MolToSmiles(Chem.MolFromSmiles(record),isomericSmiles = False)
+                records.append(canon_smi)
             
             moldf_n = []
+            inchi_set=[]
             for i,record in enumerate(records):
                 standard_record = standardize_smiles(record)
                 m = Chem.MolFromSmiles(standard_record)
                 moldf_n.append(m)
+                inchi = str(Chem.MolToInchi(m))
+                inchi_set.append(inchi)
            
             st.write('Kept data: ', len(moldf_n), 'molecules')
+            
 
              # Calculate molecular descriptors
             def calcfp(mol):
@@ -586,54 +658,77 @@ if models_option == 'MLP_Topological fingerprints':
             ######################
 
             # Apply model to make predictions
-            prediction_MLP = load_model_MLP.predict(X)
-            prediction_MLP = np.array(prediction_MLP)
-            prediction_MLP = np.where(prediction_MLP == 1, "Active", "Inactive")
-        
-
-            # # Estimination AD
-
-            
-            d_TFP = {}
-            for mol in Chem.SDMolSupplier("datasets/HDAC6_ws.sdf"):
-                tfp = Chem.RDKFingerprint(mol)
-                for m in moldf_n:
-                    if m is not None:
-                        tfp_ = Chem.RDKFingerprint(m)
-                        d_TFP.setdefault(Chem.MolToSmiles(m),[]).append(DataStructs.FingerprintSimilarity(tfp, tfp_))
-
-            df_TFP = pd.DataFrame.from_dict(d_TFP)
-            cpd_AD_vs = np.where(df_TFP.max() >= threshold, "Inside AD", "Outside AD")
-
-
-            #Print and download common results
-
-            st.header('**2. RESULTS OF PREDICTION:**')
             number=[]
             for i in range(len(moldf)):
                 number.append(str(i+1))
                 
-            for i in range(len(moldf)):
-                a= moldf[0]
-                b=list(a)
-                
-            smiles=[]
-            for i in range(len(b)):
-                m = Chem.MolToSmiles(b[i])
-                smiles.append(m)
-            pred_beta = pd.DataFrame({'SMILES': smiles, 'HDAC6 activity': prediction_MLP,'Applicability domain (AD)': cpd_AD_vs, 'No.': number}, index=None)
+               
+            exp=[]
+            std=[]
+            chembl_id=[]
+            y_pred_con=[]
+            cpd_AD_vs=[]
+            number =[]
+            count=0
+            struct=[]
+            structures=[]
+
+            for inc in inchi_set:
+                if inc in res:                    
+                    exp.append(str(res[inc][0]['pchembl_value_mean']))
+                    std.append(round(res[inc][0]['pchembl_value_std'],4))
+                    chembl_id.append(str(res[inc][0]['molecule_chembl_id']))
+                    y_pred_con.append('see experimental value')
+                    cpd_AD_vs.append('-')
+                    count+=1         
+                    number.append(count) 
+                else:
+                    m = Chem.MolFromInchi(inc)
+                    # Calculate molecular descriptors
+                    f_vs = [Chem.RDKFingerprint(m)]
+                    X = rdkit_numpy_convert(f_vs)
+                    #Predict activity
+                    prediction_MLP = load_model_MLP.predict(X)
+                    prediction_MLP = np.array(prediction_MLP)
+                    y_pred = np.where(prediction_MLP == 1, "Active", "Inactive")                                     
+                    y_pred_con.append(y_pred[0])
+
+                    # Estimination AD                                  
+                    d_ECFP4 = {}                
+                    for mol in Chem.SDMolSupplier("datasets/HDAC6_ws_kekule.sdf"):
+                        mg = AllChem.GetMorganFingerprintAsBitVect(mol, 2, useFeatures=True)
+                        for m in moldf_n:
+                            if m is not None:
+                                mg_ = AllChem.GetMorganFingerprintAsBitVect(m, 2, useFeatures=True)
+                                d_ECFP4.setdefault(Chem.MolToSmiles(m),[]).append(DataStructs.FingerprintSimilarity(mg, mg_))
+
+                    df_ECFP4 = pd.DataFrame.from_dict(d_ECFP4)
+                    str_a = np.where(df_ECFP4.max() >= threshold, "Inside AD", "Outside AD")                   
+                    cpd_AD_vs.append(str_a[0])
+                    exp.append('-')
+                    std.append('-')
+                    chembl_id.append('-')
+                    count+=1         
+                    number.append(count)             
+
+            #Print and download common results
+
+            st.header('**2. RESULTS OF PREDICTION:**')
+
+            pred_beta = pd.DataFrame({'SMILES': records, 'HDAC6 activity': y_pred_con,'Applicability domain (AD)': cpd_AD_vs, 'No.': number, 'Experimental value, pIC50': exp,'Standard deviation': std, 'Chemble ID': chembl_id}, index=None)
             predictions = pred_beta.set_index('No.')
+            count_exp=len(predictions[predictions['HDAC6 activity']=='see experimental value'])
             count_active=len(predictions[predictions['HDAC6 activity']=='Active'])
             count_active_AD=len(predictions[(predictions['HDAC6 activity']=='Active') & (predictions['Applicability domain (AD)']=='Inside AD')])
             count_inactive=len(predictions[predictions['HDAC6 activity']=='Inactive'])
             count_inactive_AD=len(predictions[(predictions['HDAC6 activity']=='Inactive') & (predictions['Applicability domain (AD)']=='Inside AD')])
+            st.write('The total number of compounds which have experimental values: ', count_exp)
             st.write('Total active molecules: ', count_active)
             st.write('Total active molecules included in AD: ', count_active_AD)
             st.write('Total inactive molecules : ', count_inactive)
             st.write('Total inactive molecules included in AD: ', count_inactive_AD)
-            
             if st.button('Show results as table'):                       
-                st.dataframe(predictions)           
+                st.dataframe(predictions)     
                 def convert_df(df):
                     return df.to_csv().encode('utf-8')  
                 csv = convert_df(predictions)
@@ -648,12 +743,13 @@ if models_option == 'MLP_Topological fingerprints':
             for i in range(len(moldf)):
                 a= moldf[0]
                 b=list(a)
+            
+            
             # Print results for each molecules
             if "button_clicked" not in st.session_state:
                 st.session_state.button_clicked = False
             def callback():
                 st.session_state.button_clicked=True
-
             if (st.button('Show results, bioavailability radar, map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
                 st.header('**Prediction results:**')
 
@@ -695,7 +791,7 @@ if models_option == 'MLP_Topological fingerprints':
                     render_mol(blk)
                     st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
-                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': prediction_MLP[i],'Applicability domain (AD)': cpd_AD_vs[i]}, index=[0])
+                    predictions = pd.DataFrame({'No. compound': i+1,'SMILES': smi, 'HDAC6 activity': y_pred_con[i],'Applicability domain (AD)': cpd_AD_vs[i], 'Experimental value, pIC50': exp[i],'Standard deviation': std[i], 'Chemble ID': chembl_id[i]}, index=[0])
                     
                     # CSS to inject contained in a string
                     hide_table_row_index = """
@@ -710,15 +806,15 @@ if models_option == 'MLP_Topological fingerprints':
                    
                     st.table(predictions)           
 
+                    if y_pred_con[i]!='see experimental value':
+                        st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
+                        def fpFunction(m, atomId=-1):
+                            fp = SimilarityMaps.GetRDKFingerprint(m,atomId=atomId)
+                            return fp
 
-                    st.write('**Predicted fragments contribution for compound number **'+ str(i+1) + '**:**')
-                    def fpFunction(m, atomId=-1):
-                        fp = SimilarityMaps.GetRDKFingerprint(m,atomId=atomId)
-                        return fp
-
-                    fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
-                    st.pyplot(fig)
-                    st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                        fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_MLP.predict_proba), colorMap=cm.PiYG_r)
+                        st.pyplot(fig)
+                        st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
+                        st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
     
 st.text('© Oleg Tinkov, 2022')      
