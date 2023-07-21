@@ -12,3 +12,4 @@ Pillow==8.0.1
 ipython==8.4.0
 streamlit==1.13.0
 python-math==0.0.1
+chembl-structure-pipeline==1.1.0
