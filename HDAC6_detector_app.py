@@ -27,7 +27,7 @@ import py3Dmol
 from molvs import standardize_smiles
 from math import pi
 # import ipyspeck
-import ipywidgets 
+# import ipywidgets 
 
 ######################
 # Page Title
