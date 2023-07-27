@@ -22,7 +22,7 @@ from sklearn.metrics import pairwise_distances
 import chembl_structure_pipeline
 import joblib
 from IPython.display import HTML
-from stmol import* 
+# from stmol import* 
 import py3Dmol
 from molvs import standardize_smiles
 from math import pi
@@ -93,20 +93,20 @@ def getProba(fp, predictionFunction):
     return predictionFunction((fp,))[0][1]
 
 
-def makeblock(smi):
-                mol = Chem.MolFromSmiles(smi)
-                mol = Chem.AddHs(mol)
-                AllChem.EmbedMolecule(mol)
-                mblock = Chem.MolToMolBlock(mol)
-                return mblock
+# def makeblock(smi):
+#                 mol = Chem.MolFromSmiles(smi)
+#                 mol = Chem.AddHs(mol)
+#                 AllChem.EmbedMolecule(mol)
+#                 mblock = Chem.MolToMolBlock(mol)
+#                 return mblock
 
-def render_mol(xyz):
-                xyzview = py3Dmol.view()#(width=400,height=400)
-                xyzview.addModel(xyz,'mol')
-                xyzview.setStyle({'stick':{}})
-                xyzview.setBackgroundColor('black')
-                xyzview.zoomTo()
-                showmol(xyzview,height=500,width=500)
+# def render_mol(xyz):
+#                 xyzview = py3Dmol.view()#(width=400,height=400)
+#                 xyzview.addModel(xyz,'mol')
+#                 xyzview.setStyle({'stick':{}})
+#                 xyzview.setBackgroundColor('black')
+#                 xyzview.zoomTo()
+#                 showmol(xyzview,height=500,width=500)
 def lipinski(smiles):
     mol=Chem.MolFromSmiles(smiles)
     desc_MolWt = Descriptors.MolWt(mol)
@@ -257,12 +257,12 @@ if models_option == 'GBM_Morgan fingerprints':
  
             lipinski(compound_smiles)    
           
-            # 3D structure
-            st.header('**3D structure of the studied compound:**')
+            # # 3D structure
+            # st.header('**3D structure of the studied compound:**')
 
-            blk=makeblock(compound_smiles)
-            render_mol(blk)
-            st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+            # blk=makeblock(compound_smiles)
+            # render_mol(blk)
+            # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
 
    
 
@@ -435,7 +435,7 @@ if models_option == 'GBM_Morgan fingerprints':
             def callback():
                 st.session_state.button_clicked=True
 
-            if (st.button('Show results, bioavailability radar, map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
+            if (st.button('Show results,  map of fragments contribution for each molecule separately', on_click=callback) or st.session_state.button_clicked):
                 st.header('**Prediction results:**')
 
                 items_on_page = st.slider('Select number of compounds on page', 1, 15, 3)
@@ -488,18 +488,14 @@ if models_option == 'GBM_Morgan fingerprints':
                         fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
                         st.pyplot(fig)
                         st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                        
-                    
-                    # Lipinski's rule
-                    st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
-                    lipinski(smi)
-
-                    # 3D structure
-                    st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
-                    blk=makeblock(smi)
-                    render_mol(blk)
-                    st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
-                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                      
+                                      
+                    # # 3D structure
+                    # st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
+                    # blk=makeblock(smi)
+                    # render_mol(blk)
+                    # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+                    # st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
 if models_option == 'MLP_Topological fingerprints':
     load_model_MLP = pickle.load(open('Topological_FP/HDAC6_mlp_TFP.pkl', 'rb'))
@@ -589,12 +585,12 @@ if models_option == 'MLP_Topological fingerprints':
             # Lipinski's rule
             st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
             lipinski(compound_smiles)
-            # 3D structure
-            st.header('**3D structure of the studied compound:**')
+            # # 3D structure
+            # st.header('**3D structure of the studied compound:**')
 
-            blk=makeblock(compound_smiles)
-            render_mol(blk)
-            st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+            # blk=makeblock(compound_smiles)
+            # render_mol(blk)
+            # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
     # Read SDF file 
     LOAD = st.sidebar.checkbox('MDL multiple SD file (*.sdf)')
     if LOAD:
@@ -763,7 +759,7 @@ if models_option == 'MLP_Topological fingerprints':
                 st.session_state.button_clicked = False
             def callback():
                 st.session_state.button_clicked=True
-            if (st.button('Show results, bioavailability radar, map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
+            if (st.button('Show results,  map of fragments contribution for each molecule separately', on_click=callback) or st.session_state.button_clicked):
                 st.header('**Prediction results:**')
 
                 items_on_page = st.slider('Select number of compounds on page', 1, 15, 3)
@@ -820,15 +816,12 @@ if models_option == 'MLP_Topological fingerprints':
                         st.pyplot(fig)
                         st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
                         
-                    # Lipinski's rule
-                    st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
-                    lipinski(smi)
-                    # 3D structure
-                    st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
-                    blk=makeblock(smi)
-                    render_mol(blk)
-                    st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
-                    st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
+                    # # 3D structure
+                    # st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
+                    # blk=makeblock(smi)
+                    # render_mol(blk)
+                    # st.write('You can use the scroll wheel on your mouse to zoom in or out a 3D structure of compound')
+                    # st.markdown("""<hr style="height:5px;border:none;color:#333;background-color:#333;" /> """, unsafe_allow_html=True)
 
     
 st.text('© Oleg Tinkov, 2023')      
