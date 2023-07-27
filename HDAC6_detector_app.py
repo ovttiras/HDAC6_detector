@@ -26,7 +26,7 @@ from IPython.display import HTML
 import py3Dmol
 from molvs import standardize_smiles
 from math import pi
-import ipyspeck
+# import ipyspeck
 import ipywidgets 
 
 ######################
