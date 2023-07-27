@@ -435,7 +435,7 @@ if models_option == 'GBM_Morgan fingerprints':
             def callback():
                 st.session_state.button_clicked=True
 
-            if (st.button('Show results,  map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
+            if (st.button('Show results, bioavailability radar, map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
                 st.header('**Prediction results:**')
 
                 items_on_page = st.slider('Select number of compounds on page', 1, 15, 3)
@@ -488,8 +488,12 @@ if models_option == 'GBM_Morgan fingerprints':
                         fig, maxweight = SimilarityMaps.GetSimilarityMapForModel(m, fpFunction, lambda x: getProba(x, load_model_GBM.predict_proba), colorMap=cm.PiYG_r)
                         st.pyplot(fig)
                         st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
-                      
-                                      
+                        
+                    
+                    # Lipinski's rule
+                    st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
+                    lipinski(smi)
+
                     # 3D structure
                     st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
                     blk=makeblock(smi)
@@ -759,7 +763,7 @@ if models_option == 'MLP_Topological fingerprints':
                 st.session_state.button_clicked = False
             def callback():
                 st.session_state.button_clicked=True
-            if (st.button('Show results,  map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
+            if (st.button('Show results, bioavailability radar, map of fragments contribution and for each molecule separately', on_click=callback) or st.session_state.button_clicked):
                 st.header('**Prediction results:**')
 
                 items_on_page = st.slider('Select number of compounds on page', 1, 15, 3)
@@ -816,6 +820,9 @@ if models_option == 'MLP_Topological fingerprints':
                         st.pyplot(fig)
                         st.write('The chemical fragments are colored in green (predicted to reduce inhibitory activity) or magenta (predicted to increase activity HDAC6 inhibitors). The gray isolines separate positive and negative contributions.')
                         
+                    # Lipinski's rule
+                    st.header("**The Bioavailability Radar: сompliance the Lipinski's rule of five**")
+                    lipinski(smi)
                     # 3D structure
                     st.write('**3D structure of compound number **'+ str(i+1) + '**:**')
                     blk=makeblock(smi)
